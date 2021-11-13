@@ -17,6 +17,9 @@ Cursor Right | increase value +16
 Cursor Left | decrease value +16
 Space | preview fade in
 Return | preview fade out
+v | toggle show values
+g | toggle show grid
+
 
 ## mouse control
 

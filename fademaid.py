@@ -103,6 +103,8 @@ mouse_posy = 0
 filename_data = ''
 filename_image = ''
 preview_in_action = False
+show_values = True
+show_grid   = True
 
 
 def save_data(
@@ -236,8 +238,14 @@ def action_refresh_view():
     global image_Tk
 
     action_refresh_numbers()
-    overlay_image = raster_image.copy()
-    overlay_image.paste(numbers_image, numbers_image.convert('RGBA'))
+    
+    if (show_grid) :
+        overlay_image = raster_image.copy()
+    else :
+        overlay_image = PilImage.new("RGBA", (640,400), "#00000000")
+
+    if (show_values) :
+        overlay_image.paste(numbers_image, numbers_image.convert('RGBA'))
     
     final_image = my_image.copy()    
     final_image.paste(overlay_image, overlay_image.convert('RGBA'))
@@ -287,6 +295,10 @@ def keyboard_Preview_FadeOut(self):
     action_Preview_FadeOut()
 def keyboard_Preview_FadeIn(self):
     action_Preview_FadeIn()
+def keyboard_Grid_Toggle(self):
+    action_Toggle_Grid()
+def keyboard_Values_Toggle(self):
+    action_Toggle_Values()
 
 
 def keyboard_Value_Increase(self):
@@ -321,23 +333,28 @@ def create_gui_drop_down_menu (
     root.config(menu=menu)
 
     filemenu = Menu(menu)
+    viewmenu = Menu(menu)
     datamenu = Menu(menu)
     infomenu = Menu(menu)
 
-    filemenu.add_command(label="open image", command=action_Open_Image, underline=0, accelerator="O")
-    filemenu.add_command(label="open data", command=action_Open_Data, underline=6, accelerator="Alt+O")
+    filemenu.add_command(label="open background-image", command=action_Open_Image, underline=5, accelerator="Alt+B")
+    filemenu.add_command(label="open data", command=action_Open_Data, underline=0, accelerator="Alt+O")
     filemenu.add_command(label="save data", command=action_SaveData, underline=0, accelerator="Alt+S")
     filemenu.add_separator()
     filemenu.add_command(label="quit", command=root.quit, underline=0, accelerator="Alt+Q")
+
+    viewmenu.add_command(label="toggle grid", command=action_Toggle_Grid, underline=7, accelerator="g")
+    viewmenu.add_command(label="toggle view", command=action_Toggle_Values, underline=7, accelerator="v")
 
     datamenu.add_command(label="reload data", command=reload_data, underline=0, accelerator="Alt-R")
     datamenu.add_separator()
     datamenu.add_command(label="clear all data", command=action_ClearData, underline=0, accelerator="Alt+C")
 
-    infomenu.add_command(label="help", command=action_Info, underline=0, accelerator="f1")
+    infomenu.add_command(label="help", command=action_Info, accelerator="f1")
 
     #add all menus
     menu.add_cascade(label="menu", menu=filemenu)
+    menu.add_cascade(label="view", menu=viewmenu)
     menu.add_cascade(label="data", menu=datamenu)
     menu.add_cascade(label="info", menu=infomenu)
 
@@ -461,6 +478,26 @@ def action_Open_Image():
     textvariable_filename_image.set("\"..."+user_filename_open[-30:]+"\"")
     load_image(user_filename_open)
 
+def action_Toggle_Grid():
+    global show_grid
+
+    if (show_grid == True) :
+        show_grid = False
+    else :
+        show_grid = True
+    
+    action_refresh_view()
+    
+
+def action_Toggle_Values():
+    global show_values
+    
+    if (show_values == True) :
+        show_values = False
+    else :
+        show_values = True
+    
+    action_refresh_view()
 
         
 
@@ -1117,6 +1154,8 @@ def _main_procedure() :
     root.bind_all("<Alt-r>", keyboard_Reload_Data)
     root.bind_all("<Control-r>", keyboard_Reload_Data)
     root.bind_all("<F1>", keyboard_Help)
+    root.bind_all("g", keyboard_Grid_Toggle)
+    root.bind_all("v", keyboard_Values_Toggle)
     root.bind_all("<Up>", keyboard_Value_Increase)
     root.bind_all("<Down>", keyboard_Value_Decrease)
     root.bind_all("<Right>", keyboard_Value_Increase_Big)

@@ -123,6 +123,11 @@ or
 [wolf@abyss-connection.de](wolf@abyss-connection.de)
 
 
+## Changes in 2.01
+
+- toggle showing the grid and the values
+
+
 ## Changes in 2.0
 
 - complete rewrite from scratch in python
