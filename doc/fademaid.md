@@ -113,7 +113,6 @@ apt-get install python3 python3-tk python3-pil python3-pil.imagetk
 
 - maybe: implement multiple layers
 
-
 Any help and support in any form is highly appreciated.
 
 If you have a feature request, a bug report or if you want to offer help, please, contact me:
@@ -125,7 +124,12 @@ or
 
 ## Changes in 2.01
 
+- control buttons
+- save data as - function
 - toggle showing the grid and the values
+- auto mode for continuous drawing with increasing or decreasing values
+- about window
+- various bug-fixes and optimizations
 
 
 ## Changes in 2.0

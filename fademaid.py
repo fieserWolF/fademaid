@@ -20,8 +20,8 @@ import os
 import sys
 from PIL import ImageTk, ImageDraw
 import PIL.Image as PilImage    #we need another name, as it collides with tkinter.Image otherwise
-from tkinter import *
-from tkinter.filedialog import askopenfilename, asksaveasfilename
+import tkinter as tk
+import tkinter.filedialog as filedialog
 import argparse
 import struct
 
@@ -36,6 +36,7 @@ RES_VERSION = resource_path('resources/version.txt')
 RES_GFX_AC = resource_path('resources/ac.png')
 RES_GFX_FONT = resource_path('resources/font.png')
 RES_DOC_HELP = resource_path('resources/help.txt')
+RES_DOC_ABOUT = resource_path('resources/about.txt')
 
 
 #global variables
@@ -61,25 +62,25 @@ _bd = 4
 FONT_ABC = 'ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!/()=?+.,-:*1234567890 $'
 
 PREVIEW_DELAY   = 40
-
+CURSOR_HAND = 'hand2'
         
-root = Tk()
+root = tk.Tk()
 
 cursor_image_normal = 'tcross'
 cursor_image = cursor_image_normal
 cursor_image_none = 'X_cursor'
 
-textvariable_coords = StringVar()   #position on screen (320x200)
-textvariable_pos   = StringVar()    #position on char-screen (40x25)
-textvariable_value   = StringVar()  #value
-textvariable_filename_data   = StringVar()
-textvariable_filename_image   = StringVar()
-textvariable_max   = StringVar()
+textvariable_coords = tk.StringVar()   #position on screen (320x200)
+textvariable_pos   = tk.StringVar()    #position on char-screen (40x25)
+textvariable_value   = tk.StringVar()  #value
+textvariable_filename_data   = tk.StringVar()
+textvariable_filename_image   = tk.StringVar()
+textvariable_max   = tk.StringVar()
 
 my_image = PilImage.new("RGB", (640, 400), "black")
 image_Tk = ImageTk.PhotoImage(my_image)
-label_image = Label()
-label_preview_image = Label()
+label_image = tk.Label()
+label_preview_image = tk.Label()
 
 raster_image = PilImage.new("RGBA", (640, 400), "black")
 numbers_image = PilImage.new("RGBA", (640, 400), "black")
@@ -93,6 +94,8 @@ args = None
 
 screenx = 0
 screeny = 0
+last_screenx = 0
+last_screeny = 0
 screen_value = 1
 value_max = 0
 
@@ -105,13 +108,20 @@ filename_image = ''
 preview_in_action = False
 show_values = True
 show_grid   = True
+auto_mode   = False
+
+button_toggle_automode = tk.Button()
+button_toggle_grid = tk.Button()
+button_toggle_values = tk.Button()
+button_fade_in = tk.Button()
+button_fade_out = tk.Button()
 
 
 def save_data(
     filename,
     data
 ):
-    print ("Opening file \"%s\" for writing data (%d ($%04x) bytes)..." % (filename, len(data), len(data)))
+    print ('Opening file "%s" for writing data (%d ($%04x) bytes)...' % (filename, len(data), len(data)))
     try:
         file_out = open(filename , "wb")
     except IOError as err:
@@ -126,6 +136,8 @@ def save_data(
 def load_data (
     filename
 ) :
+    global fadedata
+    
 	#open input file
     print ('Opening data-file "%s" for reading...' % filename)
     try:
@@ -141,23 +153,16 @@ def load_data (
         temp = struct.unpack('B',data)
         buffer.append(temp[0])
 
-    return buffer
+    fadedata = buffer
 
 
 
-def reload_data (
+def action_Reload_Data (
 ) :
-    global fadedata
-    
     if (filename_data == '') : return None
-    
-    fadedata = load_data(filename_data)
-    
+    load_data(filename_data)
     action_refresh_view()
-    return None
 
-
-    
 
 
 def load_image(
@@ -169,7 +174,12 @@ def load_image(
     
     print('Opening image-file "%s"...' % filename)
 
-    my_image = PilImage.open(filename)
+    try:
+        my_image = PilImage.open(filename)
+    except IOError as err:
+        print("I/O error: {0}".format(err))
+        return None
+        
     my_image = my_image.resize((640,400))
     my_image = my_image.convert("RGB")
         
@@ -215,9 +225,12 @@ def action_refresh_numbers():
                 
                 if (high != '0') :
                     letter_image = make_letter(high)   #high-nibble
-                    numbers_image.paste(letter_image, (16*x+2+0,16*y+4), letter_image.convert('1'))
-                letter_image = make_letter(low)   #low-nibble
-                numbers_image.paste(letter_image, (16*x+2+8,16*y+4), letter_image.convert('1'))
+                    numbers_image.paste(letter_image, (16*x+3+0,16*y+4), letter_image.convert('1'))
+                    letter_image = make_letter(low)   #low-nibble
+                    numbers_image.paste(letter_image, (16*x+1+8,16*y+4), letter_image.convert('1'))
+                else :
+                    letter_image = make_letter(low)   #only low-nibble
+                    numbers_image.paste(letter_image, (16*x-3+8,16*y+4), letter_image.convert('1'))
 
 
 
@@ -276,92 +289,69 @@ def action_show_initial_preview_window():
 
 
 
-#keyboard shortcuts
-def keyboard_quit(self):
-    root.quit()    
-def keyboard_Open_Image(self):
-    action_Open_Image()
-def keyboard_Open_Data(self):
-    action_Open_Data()
-def keyboard_Save_Data(self):
-    action_SaveData()
-def keyboard_Clear_Data(self):
-    action_ClearData()
-def keyboard_Reload_Data(self):
-    reload_data()
-def keyboard_Help(self):
-    action_Info()
-def keyboard_Preview_FadeOut(self):
-    action_Preview_FadeOut()
-def keyboard_Preview_FadeIn(self):
-    action_Preview_FadeIn()
-def keyboard_Grid_Toggle(self):
-    action_Toggle_Grid()
-def keyboard_Values_Toggle(self):
-    action_Toggle_Values()
 
-
-def keyboard_Value_Increase(self):
+def action_Value_Increase():
     global screen_value
-    if (screen_value < 256) :
+    if (screen_value < 255) :
         screen_value += 1
         update_info()
 
-def keyboard_Value_Decrease(self):
+def action_Value_Decrease():
     global screen_value
     if (screen_value > 0) :
         screen_value -= 1
         update_info()
 
-def keyboard_Value_Increase_Big(self):
+def action_Value_Increase_Big():
     global screen_value
     screen_value += 16
     if (screen_value > 255) : screen_value = 255
     update_info()
 
-def keyboard_Value_Decrease_Big(self):
+def action_Value_Decrease_Big():
     global screen_value
     screen_value -= 16
     if (screen_value < 0) : screen_value = 0
     update_info()
 
 
+
+
+
+
 def create_gui_drop_down_menu (
 	root
 ) :
-    menu = Menu(root)
+    menu = tk.Menu(root)
     root.config(menu=menu)
 
-    filemenu = Menu(menu)
-    viewmenu = Menu(menu)
-    datamenu = Menu(menu)
-    infomenu = Menu(menu)
+    filemenu = tk.Menu(menu)
+    datamenu = tk.Menu(menu)
+    infomenu = tk.Menu(menu)
 
     filemenu.add_command(label="open background-image", command=action_Open_Image, underline=5, accelerator="Alt+B")
     filemenu.add_command(label="open data", command=action_Open_Data, underline=0, accelerator="Alt+O")
-    filemenu.add_command(label="save data", command=action_SaveData, underline=0, accelerator="Alt+S")
+    filemenu.add_command(label="save data", command=action_Save_Data, underline=0, accelerator="Alt+S")
+    filemenu.add_command(label="save data as", command=action_Save_Data_As, underline=0, accelerator="Alt+Shift+S")
     filemenu.add_separator()
     filemenu.add_command(label="quit", command=root.quit, underline=0, accelerator="Alt+Q")
 
-    viewmenu.add_command(label="toggle grid", command=action_Toggle_Grid, underline=7, accelerator="g")
-    viewmenu.add_command(label="toggle view", command=action_Toggle_Values, underline=7, accelerator="v")
-
-    datamenu.add_command(label="reload data", command=reload_data, underline=0, accelerator="Alt-R")
+    datamenu.add_command(label="reload data", command=action_Reload_Data, underline=0, accelerator="Alt-R")
     datamenu.add_separator()
-    datamenu.add_command(label="clear all data", command=action_ClearData, underline=0, accelerator="Alt+C")
+    datamenu.add_command(label="clear all data", command=action_Clear_Data, underline=0, accelerator="Alt+C")
 
-    infomenu.add_command(label="help", command=action_Info, accelerator="f1")
+    infomenu.add_command(label="help", command=action_Show_Help, accelerator="f1")
+    infomenu.add_command(label="about", command=action_Show_About, accelerator="f2")
 
     #add all menus
     menu.add_cascade(label="menu", menu=filemenu)
-    menu.add_cascade(label="view", menu=viewmenu)
     menu.add_cascade(label="data", menu=datamenu)
     menu.add_cascade(label="info", menu=infomenu)
 
 
 
 def waithere():
-    var = IntVar()
+    var = tk.IntVar()
     root.after(PREVIEW_DELAY, var.set, 1)
     root.wait_variable(var)
 
@@ -373,6 +363,8 @@ def action_Preview_FadeOut(
     
     if (preview_in_action == True) : return None
     preview_in_action = True
+
+    button_fade_out.configure(relief=tk.SUNKEN) #button looks activated
     
     original_image = my_image.copy().resize((640,400)).convert("RGB")
 
@@ -401,6 +393,7 @@ def action_Preview_FadeOut(
     #action_show_initial_preview_window()
     
     preview_in_action = False
+    button_fade_out.configure(relief=tk.RAISED) #button looks normally
 
     return None
 
@@ -412,6 +405,7 @@ def action_Preview_FadeIn(
     if (preview_in_action == True) : return None
     preview_in_action = True
 
+    button_fade_in.configure(relief=tk.SUNKEN) #button looks activated
     
     original_image = my_image.copy().resize((640,400)).convert("RGB")
 
@@ -447,6 +441,8 @@ def action_Preview_FadeIn(
     
     preview_in_action = False
 
+    button_fade_in.configure(relief=tk.RAISED) #button looks normally
+
     return None
 
 
@@ -455,36 +451,62 @@ def action_Open_Data():
     global fadedata, filename_data
     
     ftypes = [('Fademaid Files', '*.bin *.fade')]
-    user_filename_open = askopenfilename(filetypes = ftypes)
+    user_filename_open = filedialog.askopenfilename(filetypes = ftypes)
     if not user_filename_open : return None
     filename_data = user_filename_open
     textvariable_filename_data.set("\"..."+user_filename_open[-30:]+"\"")
-    fadedata = load_data(user_filename_open)
+    load_data(user_filename_open)
     action_refresh_view()
     return None
 
     
-def action_SaveData():
+def action_Save_Data():
     save_data(filename_data, fadedata)
     return None
+
+    
+def action_Save_Data_As():
+    global filename_data
+    
+    ftypes = [('Data Files', '*.bin *.fade')]
+    user_filename_save = filedialog.asksaveasfilename(filetypes = ftypes)
+    if not user_filename_save : return None
+    filename_data = user_filename_save
+    textvariable_filename_data.set("\"..."+user_filename_save[-30:]+"\"")
+    save_data(user_filename_save, fadedata)
     
 def action_Open_Image():
     global filename_image
     
     ftypes = [('Image Files', '*.tif *.jpg *.png *.bmp *.gif')]
-    user_filename_open = askopenfilename(filetypes = ftypes)
+    user_filename_open = filedialog.askopenfilename(filetypes = ftypes)
     if not user_filename_open : return None
     filename_image = user_filename_open
     textvariable_filename_image.set("\"..."+user_filename_open[-30:]+"\"")
     load_image(user_filename_open)
+
+
+
+def action_Toggle_AutoMode():
+    global auto_mode
+
+    if (auto_mode == True) :
+        auto_mode = False
+        button_toggle_automode.configure(relief=tk.RAISED) #button looks normally
+    else :
+        auto_mode = True
+        button_toggle_automode.configure(relief=tk.SUNKEN) #button looks activated
+    
 
 def action_Toggle_Grid():
     global show_grid
 
     if (show_grid == True) :
         show_grid = False
+        button_toggle_grid.configure(relief=tk.RAISED) #button looks normally
     else :
         show_grid = True
+        button_toggle_grid.configure(relief=tk.SUNKEN) #button looks activated
     
     action_refresh_view()
     
@@ -494,8 +516,10 @@ def action_Toggle_Values():
     
     if (show_values == True) :
         show_values = False
+        button_toggle_values.configure(relief=tk.RAISED) #button looks normally
     else :
         show_values = True
+        button_toggle_values.configure(relief=tk.SUNKEN) #button looks activated
     
     action_refresh_view()
 
@@ -503,34 +527,59 @@ def action_Toggle_Values():
 
 
 
-def action_ClearData():
+def action_Clear_Data():
     global fadedata
     for i in range(0,SCREEN_HEIGHT*SCREEN_WIDTH) :
         fadedata[i] = 0
+    update_info()
     action_refresh_view()
 
 def mouseButton1(event):
     #left mouse button
-    global fadedata, mouse_posx, mouse_posy
-        
+    global fadedata, mouse_posx, mouse_posy, last_screenx, last_screeny
+
     mouse_posx = event.x
     mouse_posy = event.y
     update_info()
+    
+    if (
+        (last_screenx == screenx) &
+        (last_screeny == screeny)
+    ) :
+        return None
+        
+    last_screenx = screenx
+    last_screeny = screeny
 
     fadedata[screeny*SCREEN_WIDTH+screenx] = screen_value
+    if (auto_mode) : action_Value_Increase()
     action_refresh_view()
 
 
 
 def mouseButton3(event):
     #right mouse button
-    global fadedata, mouse_posx, mouse_posy
+    global fadedata, mouse_posx, mouse_posy, last_screenx, last_screeny
         
     mouse_posx = event.x
     mouse_posy = event.y
     update_info()
 
-    fadedata[screeny*SCREEN_WIDTH+screenx] = 0
+    if (
+        (last_screenx == screenx) &
+        (last_screeny == screeny)
+    ) :
+        return None
+        
+    last_screenx = screenx
+    last_screeny = screeny
+
+    if (auto_mode) :
+        fadedata[screeny*SCREEN_WIDTH+screenx] = screen_value
+        action_Value_Decrease()
+    else :
+        fadedata[screeny*SCREEN_WIDTH+screenx] = 0
+
     action_refresh_view()
 
 
@@ -583,7 +632,7 @@ def create_gui_image (
 ) :
     global label_image
     
-    frame_border = Frame(
+    frame_border = tk.Frame(
         root,
         bg=BGCOLOR,
         bd=_bd,
@@ -593,7 +642,7 @@ def create_gui_image (
         column=_column
     )
     
-    label_image = Label(
+    label_image = tk.Label(
         frame_border,
         bg=BGCOLOR,
         cursor=cursor_image
@@ -601,7 +650,7 @@ def create_gui_image (
     label_image.grid(
         row=0,
         column=0,
-        sticky=W+E
+        sticky= tk.W+ tk.E
     )
     
     label_image.bind('<Motion>', mouseMotion)
@@ -617,7 +666,7 @@ def create_gui_logo (
     _row,
     _column
 ) :
-    frame_border = Frame(
+    frame_border = tk.Frame(
         root,
         bd=_bd,
         bg=BGCOLOR
@@ -627,8 +676,8 @@ def create_gui_logo (
         column=_column
     )
 
-    photo = PhotoImage(file=RES_GFX_AC)
-    label_logo = Label(frame_border, image = photo)
+    photo = tk.PhotoImage(file=RES_GFX_AC)
+    label_logo = tk.Label(frame_border, image = photo)
     label_logo.image = photo # keep a reference!
     label_logo.grid( row=0, column=0)
     label_logo.configure(background=BGCOLOR)
@@ -645,7 +694,7 @@ def create_gui_infobox (
     my_textvariable,
     my_width
 ) :
-    frame_border = Frame(
+    frame_border = tk.Frame(
         root,
         bg=BGCOLOR,
         bd=1,
@@ -653,23 +702,23 @@ def create_gui_infobox (
         pady = _pady
         )
 
-    frame_inner = Frame(
+    frame_inner = tk.Frame(
         frame_border,
         bg=BGCOLOR_LIGHT,
         bd=1,
         padx = _padx,
         pady = _pady,
-        relief=RAISED
+        relief= tk.RAISED
         )
 
-    label_info = Label(
+    label_info = tk.Label(
 		frame_inner,
         bg=BGCOLOR2,
 		text = my_text,
         bd=1
 	)
 
-    label_content = Label(
+    label_content = tk.Label(
 		frame_inner,
         bg=BGCOLOR_LIGHT,
 		textvariable = my_textvariable,
@@ -682,35 +731,35 @@ def create_gui_infobox (
     frame_border.grid(
         row=my_row,
         column=my_column,
-        sticky=W,
+        sticky= tk.W,
     )
 
     frame_inner.grid(
         row=0,
         column=0,
-        sticky=W,
+        sticky= tk.W,
     )
 
     label_info.grid(
         row=0,
         column=0,
-        sticky=W,
+        sticky= tk.W,
     )
 
     label_content.grid(
         row=0,
         column=1,
-        sticky=W,
+        sticky= tk.W,
     )
 
 
 
-def create_gui_main (
+def create_gui_info (
 	root,
     _row,
     _column
 ) :    
-    frame_border = Frame(
+    frame_border = tk.Frame(
         root,
         bd=1,
         bg=BGCOLOR,
@@ -718,12 +767,12 @@ def create_gui_main (
     frame_border.grid(
         row=_row,
         column=_column,
-        sticky=W+E
+        sticky= tk.W+ tk.E
     )
     frame_border.grid_columnconfigure(0, weight=1)
     frame_border.grid_rowconfigure(0, weight=1)
 
-    frame_left = Frame(
+    frame_left = tk.Frame(
         frame_border,
         bd=1,
         bg=BGCOLOR,
@@ -731,13 +780,13 @@ def create_gui_main (
     frame_left.grid(
         row=0,
         column=0,
-        sticky=W
+        sticky= tk.W
     )
     frame_left.grid_columnconfigure(0, weight=1)
     frame_left.grid_rowconfigure(0, weight=1)
 
 
-    frame_right = Frame(
+    frame_right = tk.Frame(
         frame_border,
         bd=1,
         bg=BGCOLOR,
@@ -745,7 +794,7 @@ def create_gui_main (
     frame_right.grid(
         row=0,
         column=1,
-        sticky=W
+        sticky= tk.W
     )
     frame_right.grid_columnconfigure(0, weight=1)
     frame_right.grid_rowconfigure(0, weight=1)
@@ -754,22 +803,32 @@ def create_gui_main (
         frame_left,   #root frame
         0,  #row
         0,  #column
+        'value:',    #text
+        textvariable_value,   #textvariable
+        10   #text width
+    )
+
+
+    create_gui_infobox (
+        frame_right,   #root frame
+        0,  #row
+        0,  #column
         'coords:',    #text
         textvariable_coords,   #textvariable
         30   #text width
     )
 
     create_gui_infobox (
-        frame_right,   #root frame
-        0,  #row
+        frame_left,   #root frame
+        1,  #row
         0,  #column
-        'value:',    #text
-        textvariable_value,   #textvariable
+        'max:',    #text
+        textvariable_max,   #textvariable
         10   #text width
     )
 
     create_gui_infobox (
-        frame_left,   #root frame
+        frame_right,   #root frame
         1,  #row
         0,  #column
         'char:',    #text
@@ -777,9 +836,10 @@ def create_gui_main (
         30   #text width
     )
 
+
     create_gui_infobox (
-        frame_right,   #root frame
-        1,  #row
+        frame_left,   #root frame
+        2,  #row
         0,  #column
         'data:',    #text
         textvariable_filename_data,   #textvariable
@@ -795,37 +855,19 @@ def create_gui_main (
         30   #text width
     )
 
-    create_gui_infobox (
-        frame_left,   #root frame
-        2,  #row
-        0,  #column
-        'max:',    #text
-        textvariable_max,   #textvariable
-        10   #text width
-    )
-
-
-
-    create_gui_settings (
-        frame_right,   #root frame
-        2,  #row
-        0  #column
-    )
 
 
 
 
-def create_gui_settings (
+
+def create_gui_control (
 	root,
     _row,
     _column
 ) :
-    global scale_settings_list, scale_settings_list_default
-
-    return None
+    global button_toggle_automode, button_toggle_grid, button_toggle_values, button_fade_in, button_fade_out
     
-#scales modifiers
-    frame_border = Frame(
+    frame_border = tk.Frame(
         root,
         bg=BGCOLOR,
         bd=_bd,
@@ -833,78 +875,87 @@ def create_gui_settings (
     frame_border.grid(
         row=_row,
         column=_column,
-        sticky=W
+        sticky= tk.W
     )
-    frame_inner = Frame(
+    frame_inner = tk.Frame(
         frame_border,
         bg=BGCOLOR_LIGHT,
         bd=1,
         padx = _padx,
         pady = _pady,
-        relief=RAISED
+        relief= tk.RAISED
         )
     frame_inner.grid()
     frame_inner.grid_columnconfigure(0, weight=1)
     frame_inner.grid_rowconfigure(0, weight=1)
-
-    _row=0
-    label = Label(
-        frame_inner,
-        bg=BGCOLOR_LIGHT,
-        text="settings",
-        wraplength=100,
-        anchor='c',
-        justify='left',
-        fg="#000088"
-    )
-    label.grid(
-        row=_row,
-        column=0,
-        sticky=W
-    )
-
-    SETTINGS = [
-        #text, variable, row, column, low, high
-        ("player slow down", player_speed, 1,0, 1,10),
-    ]
-
-    scale_settings_list=[]
-    scale_settings_list_default=[]
-    for text, var, my_row, my_column, low, high in SETTINGS:
-        scale_settings = Scale(
-            frame_inner,
-            bg=BGCOLOR_LIGHT,
-            from_=low,
-            to=high,
-            orient=HORIZONTAL,
-            variable=var,
-            label=text,
-            length=200,
-            cursor=CURSOR_HAND,
-            #command=action_preview_scale
-        )
-        scale_settings.grid(
-            row=my_row,
-            column=my_column,
-            sticky='w'
-        )
-        #set default value
-        scale_settings.set(high/2)
-        scale_settings_list.append(scale_settings)
-        scale_settings_list_default.append(high/2)
-        
-#        last_row = my_row
  
-    button_reset = Button(
+    button_fade_in = tk.Button(
         frame_inner,
         bg=BGCOLOR,
-        text = "reset",
-        command=action_reset_settings,
+        text = "fade in",
+        command=action_Preview_FadeIn,
         cursor=CURSOR_HAND,
     )
-    button_reset.grid(
-        row=my_row+1,
+    button_fade_in.grid(
+        row=0,
         column=0,
+        sticky="w"
+    )
+ 
+    button_fade_out = tk.Button(
+        frame_inner,
+        bg=BGCOLOR,
+        text = "fade out",
+        command=action_Preview_FadeOut,
+        cursor=CURSOR_HAND,
+    )
+    button_fade_out.grid(
+        row=0,
+        column=1,
+        sticky="w"
+    )
+
+ 
+    button_toggle_automode = tk.Button(
+        frame_inner,
+        bg=BGCOLOR,
+        text = "auto-mode",
+        command=action_Toggle_AutoMode,
+        cursor=CURSOR_HAND,
+    )
+    button_toggle_automode.grid(
+        row=0,
+        column=2,
+        sticky="w"
+    )
+
+ 
+    button_toggle_grid = tk.Button(
+        frame_inner,
+        bg=BGCOLOR,
+        text = "show grid",
+        command=action_Toggle_Grid,
+        cursor=CURSOR_HAND,
+        relief=tk.SUNKEN,
+    )
+    button_toggle_grid.grid(
+        row=0,
+        column=3,
+        sticky="w"
+    )
+ 
+ 
+    button_toggle_values = tk.Button(
+        frame_inner,
+        bg=BGCOLOR,
+        text = "show values",
+        command=action_Toggle_Values,
+        cursor=CURSOR_HAND,
+        relief=tk.SUNKEN,
+    )
+    button_toggle_values.grid(
+        row=0,
+        column=4,
         sticky="w"
     )
  
@@ -920,44 +971,21 @@ def action_reset_settings():
 
 
    
-def action_Info (
+def action_Show_Help (
 ) :
-    root.bind_all("<Alt-q>", keyboard_quit)
-    root.bind_all("<Alt-b>", keyboard_Open_Image)
-    root.bind_all("<Alt-o>", keyboard_Open_Data)
-    root.bind_all("<Alt-s>", keyboard_Save_Data)
-    root.bind_all("<Alt-c>", keyboard_Clear_Data)
-    root.bind_all("<Alt-r>", keyboard_Reload_Data)
-    root.bind_all("<F1>", keyboard_Help)
-    root.bind_all("<Up>", keyboard_Value_Increase)
-    root.bind_all("<Down>", keyboard_Value_Decrease)
-    root.bind_all("<Right>", keyboard_Value_Increase_Big)
-    root.bind_all("<Left>", keyboard_Value_Decrease_Big)
-
     TEXT_HEIGHT=20
     TEXT_WIDTH=40
 
-    def close_window():
-        global info_window
-        global info_window_open
-        
-        if (info_window_open == True) :
-            info_window.destroy()
-            info_window_open = False
-
-    def close_window_key(self):
-        close_window()
-
-    def keyboard_up(event):
+    def keyboard_up():
         msg.yview_scroll(-1,"units")
 
-    def keyboard_down(event):
+    def keyboard_down():
         msg.yview_scroll(1,"units")
 
-    def keyboard_pageup(event):
+    def keyboard_pageup():
         msg.yview_scroll(TEXT_HEIGHT,"units")
 
-    def keyboard_pagedown(event):
+    def keyboard_pagedown():
         msg.yview_scroll(TEXT_HEIGHT*-1,"units")
 
 
@@ -965,38 +993,38 @@ def action_Info (
     _pady = 10
     
 	#http://effbot.org/tkinterbook/toplevel.htm
-    info_window = Toplevel(
+    info_window = tk.Toplevel(
         bd=10
     )
     info_window.title("Help")
     info_window.configure(background=BGCOLOR)
 
-    frame_left = Frame( info_window)
-    frame_right = Frame( info_window)
+    frame_left = tk.Frame( info_window)
+    frame_right = tk.Frame( info_window)
 
     #http://effbot.org/tkinterbook/message.htm
     #text
-    msg = Text(
+    msg = tk.Text(
         frame_right,
 #        bd=10,
-        relief=FLAT,
+        relief=tk.FLAT,
         width=TEXT_WIDTH,
         height=TEXT_HEIGHT
     )
 
     #scrollbar
-    msg_scrollBar = Scrollbar(
+    msg_scrollBar = tk.Scrollbar(
         frame_right,
         bg=BGCOLOR
     )
     msg_scrollBar.config(command=msg.yview)
-    msg.insert(END, open(RES_DOC_HELP, encoding="utf_8").read())
+    msg.insert(tk.END, open(RES_DOC_HELP, encoding="utf_8").read())
     msg.config(yscrollcommand=msg_scrollBar.set)
-    msg.config(state=DISABLED)
+    msg.config(state=tk.DISABLED)
 
 
     #button
-    button = Button(
+    button = tk.Button(
         frame_left,
         bg=BGCOLOR,
         text="OK",
@@ -1005,65 +1033,175 @@ def action_Info (
         pady=_pady
     )
 
-
-
-
     #placement in grid
     frame_left.grid(
         row=0,
         column=0,
-        sticky=W
+        sticky= tk.W
     )
     frame_right.grid(
         row=0,
         column=1,
-        sticky=W
+        sticky= tk.W
     )
     
     label_image.grid(
         row=0,
         column=0,
-        sticky=W
+        sticky= tk.W
     )
     button.grid(
         row=1,
         column=0,
-        sticky=W+E
+        sticky= tk.W+ tk.E
     )
 
     msg.grid(
         row=0,
         column=0,
-        sticky=W
+        sticky= tk.W
     )
     msg_scrollBar.grid(
         row=0,
         column=1,
-        sticky=N+S
+        sticky= tk.N+ tk.S
     )
 
     #https://www.pythontutorial.net/tkinter/tkinter-event-binding/
-    info_window.bind('<Up>', keyboard_up) 
-    info_window.bind('<Down>', keyboard_down) 
-    info_window.bind('<Next>', keyboard_pageup) 
-    info_window.bind('<Prior>', keyboard_pagedown) 
+    info_window.bind('<Up>', lambda event: keyboard_up())
+    info_window.bind('<Down>', lambda event: keyboard_down()) 
+    info_window.bind('<Next>', lambda event: keyboard_pageup()) 
+    info_window.bind('<Prior>', lambda event: keyboard_pagedown()) 
+
+
+
+   
+def action_Show_About (
+) :
+    TEXT_HEIGHT=40
+    TEXT_WIDTH=80
+
+
+    def keyboard_up():
+        msg.yview_scroll(-1,"units")
+
+    def keyboard_down():
+        msg.yview_scroll(1,"units")
+
+    def keyboard_pageup():
+        msg.yview_scroll(TEXT_HEIGHT,"units")
+
+    def keyboard_pagedown():
+        msg.yview_scroll(TEXT_HEIGHT*-1,"units")
+
+
+    _padx = 10
+    _pady = 10
+    
+	#http://effbot.org/tkinterbook/toplevel.htm
+    info_window = tk.Toplevel(
+        bd=10
+    )
+    info_window.title("About")
+    info_window.configure(background=BGCOLOR)
+
+    frame_left = tk.Frame( info_window)
+    frame_right = tk.Frame( info_window)
+
+    #http://effbot.org/tkinterbook/message.htm
+    #text
+    msg = tk.Text(
+        frame_right,
+#        bd=10,
+        relief=tk.FLAT,
+        width=TEXT_WIDTH,
+        height=TEXT_HEIGHT
+    )
+
+    #scrollbar
+    msg_scrollBar = tk.Scrollbar(
+        frame_right,
+        bg=BGCOLOR
+    )
+    msg_scrollBar.config(command=msg.yview)
+    msg.insert(tk.END, open(RES_DOC_ABOUT, encoding="utf_8").read())
+    msg.config(yscrollcommand=msg_scrollBar.set)
+    msg.config(state=tk.DISABLED)
+
+
+    #button
+    button = tk.Button(
+        frame_left,
+        bg=BGCOLOR,
+        text="OK",
+        command=info_window.destroy,
+        padx=_padx,
+        pady=_pady
+    )
+    
+    #placement in grid
+    frame_left.grid(
+        row=0,
+        column=0,
+        sticky= tk.W
+    )
+    frame_right.grid(
+        row=0,
+        column=1,
+        sticky= tk.W
+    )
+    
+    label_image.grid(
+        row=0,
+        column=0,
+        sticky= tk.W
+    )
+    button.grid(
+        row=1,
+        column=0,
+        sticky= tk.W+ tk.E
+    )
+
+    msg.grid(
+        row=0,
+        column=0,
+        sticky= tk.W
+    )
+    msg_scrollBar.grid(
+        row=0,
+        column=1,
+        sticky= tk.N+ tk.S
+    )
+
+    #https://www.pythontutorial.net/tkinter/tkinter-event-binding/
+    info_window.bind('<Up>', lambda event: keyboard_up())
+    info_window.bind('<Down>', lambda event: keyboard_down()) 
+    info_window.bind('<Next>', lambda event: keyboard_pageup()) 
+    info_window.bind('<Prior>', lambda event: keyboard_pagedown()) 
+
+
+
 
 
 def create_gui_preview(
 ) :
+    @staticmethod
+    def __callback():
+        return
+
     global label_preview_image
 #    global preview_window
 #    global preview_window_open
     
-    preview_window = Toplevel(bd=10)
+    preview_window = tk.Toplevel(bd=10)
     preview_window.title("preview")
-#    preview_window.protocol("WM_DELETE_WINDOW", close_window)
+    preview_window.protocol("WM_DELETE_WINDOW", __callback)
+    preview_window.resizable(0, 0)
 #    preview_window.iconphoto(False, tk.PhotoImage(file=RES_GFX_ICON))
 #    preview_window.configure(background=BGCOLOR)
-    preview_window.resizable(0, 0)
 
 
-    label_preview_image = Label(
+    label_preview_image = tk.Label(
         preview_window,
         bg=BGCOLOR
     )
@@ -1071,7 +1209,7 @@ def create_gui_preview(
     label_preview_image.grid(
         row=0,
         column=0,
-        sticky=W+E
+        sticky= tk.W+ tk.E
     )
 
 #    label_preview_image.bind('<Button-1>', input_mouse_left_button_preview)
@@ -1091,15 +1229,23 @@ def create_gui_base(
         0   #column
     )
 
-    create_gui_main(
+    create_gui_info(
         root,
         1,  #row
         0   #column
     )
 
+
+
+    create_gui_control (
+        root,   #root frame
+        2,  #row
+        0  #column
+    )
+
     create_gui_image(
         root,
-        2,  #row
+        3,  #row
         0   #column
     )
 
@@ -1110,7 +1256,7 @@ def create_gui_base(
 
 def _main_procedure() :
 
-    global args, fadedata
+    global args
     global filename_image, filename_data
     global font_image, logo_image
 
@@ -1139,29 +1285,32 @@ def _main_procedure() :
     create_gui_preview()
 
 
-
     #https://www.pythontutorial.net/tkinter/tkinter-event-binding/
-    root.bind_all("<Alt-q>", keyboard_quit)
-    root.bind_all("<Control-q>", keyboard_quit)
-    root.bind_all("<Alt-b>", keyboard_Open_Image)
-    root.bind_all("<Control-b>", keyboard_Open_Image)
-    root.bind_all("<Alt-o>", keyboard_Open_Data)
-    root.bind_all("<Control-o>", keyboard_Open_Data)
-    root.bind_all("<Alt-s>", keyboard_Save_Data)
-    root.bind_all("<Control-s>", keyboard_Save_Data)
-    root.bind_all("<Alt-c>", keyboard_Clear_Data)
-    root.bind_all("<Control-c>", keyboard_Clear_Data)
-    root.bind_all("<Alt-r>", keyboard_Reload_Data)
-    root.bind_all("<Control-r>", keyboard_Reload_Data)
-    root.bind_all("<F1>", keyboard_Help)
-    root.bind_all("g", keyboard_Grid_Toggle)
-    root.bind_all("v", keyboard_Values_Toggle)
-    root.bind_all("<Up>", keyboard_Value_Increase)
-    root.bind_all("<Down>", keyboard_Value_Decrease)
-    root.bind_all("<Right>", keyboard_Value_Increase_Big)
-    root.bind_all("<Left>", keyboard_Value_Decrease_Big)
-    root.bind_all("<Return>", keyboard_Preview_FadeOut)
-    root.bind_all("<space>", keyboard_Preview_FadeIn)
+    root.bind_all("<Alt-q>", lambda event: root.quit())
+    root.bind_all("<Control-q>", lambda event: root.quit())
+    root.bind_all("<Alt-b>", lambda event: action_Open_Image())
+    root.bind_all("<Control-b>", lambda event: action_Open_Image())
+    root.bind_all("<Alt-o>", lambda event: action_Open_Data())
+    root.bind_all("<Control-o>", lambda event: action_Open_Data())
+    root.bind_all("<Alt-s>", lambda event: action_Save_Data())
+    root.bind_all("<Control-s>", lambda event: action_Save_Data())
+    root.bind_all("<Alt-S>", lambda event: action_Save_Data_As())
+    root.bind_all("<Control-S>", lambda event: action_Save_Data_As())
+    root.bind_all("<Alt-c>", lambda event: action_Clear_Data())
+    root.bind_all("<Control-c>", lambda event: action_Clear_Data())
+    root.bind_all("<Alt-r>", lambda event: action_Reload_Data())
+    root.bind_all("<Control-r>", lambda event: action_Reload_Data())
+    root.bind_all("<F1>", lambda event: action_Show_Help())
+    root.bind_all("<F2>", lambda event: action_Show_About())
+    root.bind_all("a", lambda event: action_Toggle_AutoMode())
+    root.bind_all("g", lambda event: action_Toggle_Grid())
+    root.bind_all("v", lambda event: action_Toggle_Values())
+    root.bind_all("<Up>", lambda event: action_Value_Increase())
+    root.bind_all("<Down>", lambda event: action_Value_Decrease())
+    root.bind_all("<Right>", lambda event: action_Value_Increase_Big())
+    root.bind_all("<Left>", lambda event: action_Value_Decrease_Big())
+    root.bind_all("<Return>", lambda event: action_Preview_FadeOut())
+    root.bind_all("<space>", lambda event: action_Preview_FadeIn())
 
 #    print('Opening font-image-file "%s"...' % RES_GFX_FONT)
     font_image = PilImage.open(RES_GFX_FONT)
@@ -1172,7 +1321,7 @@ def _main_procedure() :
     if (args.data_file) :
         filename_data = args.data_file
         textvariable_filename_data.set("\"..."+filename_data[-30:]+"\"")
-        fadedata = load_data(filename_data)
+        load_data(filename_data)
 
     if (args.image_file) :
         filename_image = args.image_file
@@ -1185,7 +1334,7 @@ def _main_procedure() :
     
     action_show_initial_preview_window()
 
-    mainloop()
+    tk.mainloop()
     
 
 

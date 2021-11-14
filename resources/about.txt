@@ -85,6 +85,16 @@ help, please, contact me:
 http://csdb.dk/scener/?id=3623 or
 `wolf@abyss-connection.de <wolf@abyss-connection.de>`__
 
+Changes in 2.01
+---------------
+
+-  control buttons
+-  save data as - function
+-  toggle showing the grid and the values
+-  auto mode for continuous drawing with increasing or decreasing values
+-  about window
+-  various bug-fixes and optimizations
+
 Changes in 2.0
 --------------
 
