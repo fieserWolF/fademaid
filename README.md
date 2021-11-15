@@ -55,7 +55,7 @@ The data is stored as a continuous 1000 bytes corresponding to the 40x25 screen 
 
 FadeMaid comes in two flavors:
 
-- standalone executable for 64-bit systems Linux (MacOS/Darwin and Windows might follow) (see [releases](https://github.com/fieserWolF/ditheridoo/releases))
+- standalone executable for 64-bit systems Linux (MacOS/Darwin and Windows might follow) (see [releases](https://github.com/fieserWolF/fademaid/releases))
 - Python3 script
 
 ## Run the standalone executable
@@ -84,7 +84,7 @@ You need to right-click or Control-click the app and select “Open”.
 
 ## Run the Python3 script directly
 
-Download _ditheridoo.py_ and the whole _resource_ - directory into the same folder on your computer.
+Download _fademaid.py_ and the whole _resource_ - directory into the same folder on your computer.
 
 ### Prerequisites
 

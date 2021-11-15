@@ -37,7 +37,7 @@ RES_GFX_AC = resource_path('resources/ac.png')
 RES_GFX_FONT = resource_path('resources/font.png')
 RES_DOC_HELP = resource_path('resources/help.txt')
 RES_DOC_ABOUT = resource_path('resources/about.txt')
-
+RES_GFX_ICON = resource_path('resources/icon.png')
 
 #global variables
 def _global_variables():
@@ -997,6 +997,7 @@ def action_Show_Help (
         bd=10
     )
     info_window.title("Help")
+    info_window.iconphoto(False, tk.PhotoImage(file=RES_GFX_ICON))
     info_window.configure(background=BGCOLOR)
 
     frame_left = tk.Frame( info_window)
@@ -1103,6 +1104,7 @@ def action_Show_About (
         bd=10
     )
     info_window.title("About")
+    info_window.iconphoto(False, tk.PhotoImage(file=RES_GFX_ICON))
     info_window.configure(background=BGCOLOR)
 
     frame_left = tk.Frame( info_window)
@@ -1190,14 +1192,12 @@ def create_gui_preview(
         return
 
     global label_preview_image
-#    global preview_window
-#    global preview_window_open
     
     preview_window = tk.Toplevel(bd=10)
     preview_window.title("preview")
+    preview_window.iconphoto(False, tk.PhotoImage(file=RES_GFX_ICON))
     preview_window.protocol("WM_DELETE_WINDOW", __callback)
     preview_window.resizable(0, 0)
-#    preview_window.iconphoto(False, tk.PhotoImage(file=RES_GFX_ICON))
 #    preview_window.configure(background=BGCOLOR)
 
 
@@ -1211,10 +1211,6 @@ def create_gui_preview(
         column=0,
         sticky= tk.W+ tk.E
     )
-
-#    label_preview_image.bind('<Button-1>', input_mouse_left_button_preview)
-            
-#    action_image_refresh_show()
 
 	
         
@@ -1280,6 +1276,7 @@ def _main_procedure() :
     #main procedure
     title_string = PROGNAME+" "+VERSION+" *** by fieserWolF"
     root.title(title_string)
+    root.iconphoto(False, tk.PhotoImage(file=RES_GFX_ICON))
     create_gui_drop_down_menu(root)
     create_gui_base()
     create_gui_preview()
