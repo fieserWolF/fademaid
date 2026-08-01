@@ -40,6 +40,17 @@ For a list of quick keyboard shortcuts and other information see file [cheatshee
 
 
 
+# Keymode
+
+In keymode (keyboard mode) you navigate using the cursor-keys and enter the hex values using the keyboard 0-f. Press enter to set the value. Press k to toggle the keyboard mode.
+
+
+# Automode
+
+In automode the values are increased autmatically when clicking on a character with the right mouse-button. Pressing left mouse-button decreases values.
+
+
+
 # File Format
 
 The data is stored as a continuous 1000 bytes corresponding to the 40x25 screen of a Commodore 64 bitmap.
@@ -101,8 +112,8 @@ pip3 install tk pillow
 
 On my Debian GNU/Linux machine I use apt-get to install everything needed:
 ```
-apt-get update
-apt-get install python3 python3-tk python3-pil python3-pil.imagetk
+apt update
+apt install python3 python3-tk python3-pil python3-pil.imagetk
 ```
 
 
@@ -120,6 +131,16 @@ If you have a feature request, a bug report or if you want to offer help, please
 [http://csdb.dk/scener/?id=3623](http://csdb.dk/scener/?id=3623)
 or
 [wolf@abyss-connection.de](wolf@abyss-connection.de)
+
+
+## Changes in 2.01
+
+(next release candidate)
+
+- code completely restructured
+- fix: re-editing the same character
+- added cursor
+- added keymode: cursor keys navigate, enter hex value, press enter to store
 
 
 ## Changes in 2.01
@@ -146,7 +167,7 @@ or
 
 _FadeMaid editor for Commodore 64 screen-values._
 
-_Copyright (C) 2021 fieserWolF / Abyss-Connection_
+_Copyright (C) 2026 fieserWolF / Abyss-Connection_
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

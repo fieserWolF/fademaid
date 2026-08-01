@@ -55,6 +55,20 @@ Commandline Usage
 
    Example: ./fademaid.py -i image.png -d data.bin
 
+Keymode
+=======
+
+In keymode (keyboard mode) you navigate using the cursor-keys and enter
+the hex values using the keyboard 0-f. Press enter to set the value.
+Press k to toggle the keyboard mode.
+
+Automode
+========
+
+In automode the values are increased autmatically when clicking on a
+character with the right mouse-button. Pressing left mouse-button
+decreases values.
+
 File Format
 ===========
 
@@ -88,6 +102,19 @@ http://csdb.dk/scener/?id=3623 or
 Changes in 2.01
 ---------------
 
+(next release candidate)
+
+-  code completely restructured
+-  fix: re-editing the same character
+-  added cursor
+-  added keymode: cursor keys navigate, enter hex value, press enter to
+   store
+
+.. _changes-in-2.01-1:
+
+Changes in 2.01
+---------------
+
 -  control buttons
 -  save data as - function
 -  toggle showing the grid and the values
@@ -110,7 +137,7 @@ License
 
 *FadeMaid editor for Commodore 64 screen-values.*
 
-*Copyright (C) 2021 fieserWolF / Abyss-Connection*
+*Copyright (C) 2026 fieserWolF / Abyss-Connection*
 
 This program is free software: you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
