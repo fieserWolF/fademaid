@@ -24,6 +24,7 @@ Ctrl+c | copy selected block at mouse position
 Ctrl+v | paste selected block at mouse position
 Ctrl+x | cut selected block at mouse position
 Enter | store value in keymode
+BackSpace | clear value at cursor or mouse position (set value=0)
 
 
 ## mouse control

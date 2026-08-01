@@ -99,18 +99,14 @@ help, please, contact me:
 http://csdb.dk/scener/?id=3623 or
 `wolf@abyss-connection.de <wolf@abyss-connection.de>`__
 
-Changes in 2.01
+Changes in 2.02
 ---------------
-
-(next release candidate)
 
 -  code completely restructured
 -  fix: re-editing the same character
 -  added cursor
 -  added keymode: cursor keys navigate, enter hex value, press enter to
    store
-
-.. _changes-in-2.01-1:
 
 Changes in 2.01
 ---------------

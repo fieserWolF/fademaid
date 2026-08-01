@@ -133,9 +133,7 @@ or
 [wolf@abyss-connection.de](wolf@abyss-connection.de)
 
 
-## Changes in 2.01
-
-(next release candidate)
+## Changes in 2.02
 
 - code completely restructured
 - fix: re-editing the same character
